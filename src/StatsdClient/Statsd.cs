@@ -60,18 +60,18 @@ namespace StatsdClient
             : this(statsdClient, "") { }
 
 
-        public void Send<TCommandType>(string name, int value) where TCommandType : IAllowsInteger
+        public void Send<TCommandType>(string name, int value, IDictionary<String, String> dimensions = null) where TCommandType : IAllowsInteger
         {
-            Commands = new List<string> { GetCommand(name, value.ToString(CultureInfo.InvariantCulture), _commandToUnit[typeof(TCommandType)], 1) };
+            Commands = new List<string> { GetCommand(name, value.ToString(CultureInfo.InvariantCulture), _commandToUnit[typeof(TCommandType)], 1, dimensions) };
             Send();
         }
-        public void Send<TCommandType>(string name, double value) where TCommandType : IAllowsDouble
+        public void Send<TCommandType>(string name, double value, IDictionary<String, String> dimensions = null) where TCommandType : IAllowsDouble
         {
-            Commands = new List<string> { GetCommand(name, String.Format(CultureInfo.InvariantCulture,"{0:F15}", value), _commandToUnit[typeof(TCommandType)], 1) };
+            Commands = new List<string> { GetCommand(name, String.Format(CultureInfo.InvariantCulture, "{0:F15}", value), _commandToUnit[typeof(TCommandType)], 1, dimensions) };
             Send();
         }
 
-        public void Send<TCommandType>(string name, double value, bool isDeltaValue) where TCommandType : IAllowsDouble, IAllowsDelta
+        public void Send<TCommandType>(string name, double value, bool isDeltaValue, IDictionary<String, String> dimensions = null) where TCommandType : IAllowsDouble, IAllowsDelta
         {
           if (isDeltaValue)
           {
@@ -83,46 +83,46 @@ namespace StatsdClient
                 GetCommand(name, string.Format(CultureInfo.InvariantCulture, 
                 deltaValueStringFormat, 
                 value), 
-                  _commandToUnit[typeof(TCommandType)], 1)
+                  _commandToUnit[typeof(TCommandType)], 1, dimensions)
               };
               Send();
           }
           else
           {
-              Send<TCommandType>(name, value);
+              Send<TCommandType>(name, value, dimensions);
           }
         }
 
-        public void Send<TCommandType>(string name, string value) where TCommandType : IAllowsString
+        public void Send<TCommandType>(string name, string value, IDictionary<String, String> dimensions = null) where TCommandType : IAllowsString
         {
-            Commands = new List<string> { GetCommand(name, value.ToString(CultureInfo.InvariantCulture), _commandToUnit[typeof(TCommandType)], 1) };
+            Commands = new List<string> { GetCommand(name, value.ToString(CultureInfo.InvariantCulture), _commandToUnit[typeof(TCommandType)], 1, dimensions) };
             Send();
         }
 
-        public void Add<TCommandType>(string name, int value) where TCommandType : IAllowsInteger
+        public void Add<TCommandType>(string name, int value, IDictionary<String, String> dimensions = null) where TCommandType : IAllowsInteger
         {
-            ThreadSafeAddCommand(GetCommand(name, value.ToString(CultureInfo.InvariantCulture), _commandToUnit[typeof (TCommandType)], 1));
+            ThreadSafeAddCommand(GetCommand(name, value.ToString(CultureInfo.InvariantCulture), _commandToUnit[typeof(TCommandType)], 1, dimensions));
         }
 
-        public void Add<TCommandType>(string name, double value) where TCommandType : IAllowsDouble
+        public void Add<TCommandType>(string name, double value, IDictionary<String, String> dimensions = null) where TCommandType : IAllowsDouble
         {
-            ThreadSafeAddCommand(GetCommand(name, String.Format(CultureInfo.InvariantCulture,"{0:F15}", value), _commandToUnit[typeof(TCommandType)], 1));
+            ThreadSafeAddCommand(GetCommand(name, String.Format(CultureInfo.InvariantCulture, "{0:F15}", value), _commandToUnit[typeof(TCommandType)], 1, dimensions));
         }
 
-        public void Send<TCommandType>(string name, int value, double sampleRate) where TCommandType : IAllowsInteger, IAllowsSampleRate
+        public void Send<TCommandType>(string name, int value, double sampleRate, IDictionary<String, String> dimensions = null) where TCommandType : IAllowsInteger, IAllowsSampleRate
         {
             if (RandomGenerator.ShouldSend(sampleRate))
             {
-                Commands = new List<string> { GetCommand(name, value.ToString(CultureInfo.InvariantCulture), _commandToUnit[typeof(TCommandType)], sampleRate) };
+                Commands = new List<string> { GetCommand(name, value.ToString(CultureInfo.InvariantCulture), _commandToUnit[typeof(TCommandType)], sampleRate, dimensions) };
                 Send();
             }
         }
 
-        public void Add<TCommandType>(string name, int value, double sampleRate) where TCommandType : IAllowsInteger, IAllowsSampleRate
+        public void Add<TCommandType>(string name, int value, double sampleRate, IDictionary<String, String> dimensions = null) where TCommandType : IAllowsInteger, IAllowsSampleRate
         {
             if (RandomGenerator.ShouldSend(sampleRate))
             {
-                Commands.Add(GetCommand(name, value.ToString(CultureInfo.InvariantCulture), _commandToUnit[typeof(TCommandType)], sampleRate));
+                Commands.Add(GetCommand(name, value.ToString(CultureInfo.InvariantCulture), _commandToUnit[typeof(TCommandType)], sampleRate, dimensions));
             }
         }
 
@@ -147,13 +147,23 @@ namespace StatsdClient
             }
         }
 
-        private string GetCommand(string name, string value, string unit, double sampleRate)
+        private string GetCommand(string name, string value, string unit, double sampleRate, IDictionary<String, String> dimensions)
         {
-            var format = sampleRate == 1 ? "{0}:{1}|{2}" : "{0}:{1}|{2}|@{3}";
-            return string.Format(CultureInfo.InvariantCulture, format, _prefix + name, value, unit, sampleRate);
+            var haveDims = dimensions != null && dimensions.Count != 0;
+            var format = (sampleRate == 1 ? "{0}:{1}|{2}" : "{0}:{1}|{2}|@{3}") + (haveDims ? "|#{4}" : "");
+            var dimensionsStr = "";
+            if (haveDims) {
+                string[] dimStrs = new string[dimensions.Count];
+                int i =0;
+                foreach(KeyValuePair<string, string> entry in dimensions) {
+                    dimStrs[i++] =  entry.Key + "=" + entry.Value;
+                }
+                dimensionsStr = string.Join(",", dimStrs);
+            }
+            return string.Format(CultureInfo.InvariantCulture, format, _prefix + name, value, unit, sampleRate, dimensionsStr);
         }
 
-        public void Add(Action actionToTime, string statName, double sampleRate=1)
+        public void Add(Action actionToTime, string statName, double sampleRate = 1, IDictionary<String, String> dimensions = null)
         {
             var stopwatch = StopwatchFactory.Get();
 
@@ -167,12 +177,12 @@ namespace StatsdClient
                 stopwatch.Stop();
                 if (RandomGenerator.ShouldSend(sampleRate))
                 {
-                    Add<Timing>(statName, stopwatch.ElapsedMilliseconds());
+                    Add<Timing>(statName, stopwatch.ElapsedMilliseconds(), dimensions);
                 }
             }
         }
 
-        public void Send(Action actionToTime, string statName, double sampleRate=1)
+        public void Send(Action actionToTime, string statName, double sampleRate = 1, IDictionary<String, String> dimensions = null)
         {
             var stopwatch = StopwatchFactory.Get();
 
@@ -186,7 +196,7 @@ namespace StatsdClient
                 stopwatch.Stop();
                 if (RandomGenerator.ShouldSend(sampleRate))
                 {
-                    Send<Timing>(statName, stopwatch.ElapsedMilliseconds());
+                    Send<Timing>(statName, stopwatch.ElapsedMilliseconds(), dimensions);
                 }
             }
         }

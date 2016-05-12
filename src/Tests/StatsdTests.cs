@@ -3,6 +3,7 @@ using System.Threading.Tasks;
 using NUnit.Framework;
 using Rhino.Mocks;
 using StatsdClient;
+using System.Collections.Generic;
 
 namespace Tests
 {
@@ -33,11 +34,33 @@ namespace Tests
             }
 
             [Test]
+            public void increases_counter_with_value_of_X_with_dimensions()
+            {
+                var dims = new Dictionary<String,String>();
+                dims["moo"] = "foo";
+                dims["zam"] = "bam";
+                var s = new Statsd(_udp, _randomGenerator, _stopwatch);
+                s.Send<Statsd.Counting>("counter", 5, dims);
+                _udp.AssertWasCalled(x => x.Send("counter:5|c|#moo=foo,zam=bam"));
+            }
+
+            [Test]
             public void increases_counter_with_value_of_X_and_sample_rate()
             {
                 var s = new Statsd(_udp, _randomGenerator, _stopwatch);
                 s.Send<Statsd.Counting>("counter", 5, 0.1);
                 _udp.AssertWasCalled(x => x.Send("counter:5|c|@0.1"));
+            }
+
+            [Test]
+            public void increases_counter_with_value_of_X_and_sample_rate_with_dimensions()
+            {
+                var dims = new Dictionary<String, String>();
+                dims["moo"] = "foo";
+                dims["zam"] = "bam";
+                var s = new Statsd(_udp, _randomGenerator, _stopwatch);
+                s.Send<Statsd.Counting>("counter", 5, 0.1, dims);
+                _udp.AssertWasCalled(x => x.Send("counter:5|c|@0.1|#moo=foo,zam=bam"));
             }
 
             [Test]

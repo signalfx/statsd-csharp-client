@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 
 namespace StatsdClient
 {
@@ -53,9 +54,9 @@ namespace StatsdClient
         /// <param name="statName">Name of the metric.</param>
         /// <param name="value">Value of the counter. Defaults to 1.</param>
         /// <param name="sampleRate">Sample rate to reduce the load on your metric server. Defaults to 1 (100%).</param>
-        public static void Counter(string statName, int value = 1, double sampleRate = 1)
+        public static void Counter(string statName, int value = 1, double sampleRate = 1, IDictionary<String, String> dimensions = null)
         {
-            _statsD.Send<Statsd.Counting>(BuildNamespacedStatName(statName), value, sampleRate);
+            _statsD.Send<Statsd.Counting>(BuildNamespacedStatName(statName), value, sampleRate, dimensions);
         }
 
         /// <summary>
@@ -63,9 +64,9 @@ namespace StatsdClient
         /// </summary>
         /// <param name="statName">Name of the metric.</param>
         /// <param name="deltaValue"></param>
-        public static void GaugeDelta(string statName, double deltaValue)
+        public static void GaugeDelta(string statName, double deltaValue, IDictionary<String, String> dimensions = null)
         {
-            _statsD.Send<Statsd.Gauge>(BuildNamespacedStatName(statName), deltaValue, true);
+            _statsD.Send<Statsd.Gauge>(BuildNamespacedStatName(statName), deltaValue, true, dimensions);
         }
 
         /// <summary>
@@ -73,9 +74,9 @@ namespace StatsdClient
         /// </summary>
         /// <param name="statName">Name of the metric.</param>
         /// <param name="absoluteValue">Absolute value of the gauge to set.</param>
-        public static void GaugeAbsoluteValue(string statName, double absoluteValue)
+        public static void GaugeAbsoluteValue(string statName, double absoluteValue, IDictionary<String, String> dimensions = null)
         {
-            _statsD.Send<Statsd.Gauge>(BuildNamespacedStatName(statName), absoluteValue, false);
+            _statsD.Send<Statsd.Gauge>(BuildNamespacedStatName(statName), absoluteValue, false, dimensions);
         }
 
         [Obsolete("Will be removed in future version. Use explicit GaugeDelta or GaugeAbsoluteValue instead.")]
@@ -90,9 +91,9 @@ namespace StatsdClient
         /// <param name="statName">Name of the metric.</param>
         /// <param name="value">Elapsed miliseconds of the event.</param>
         /// <param name="sampleRate">Sample rate to reduce the load on your metric server. Defaults to 1 (100%).</param>
-        public static void Timer(string statName, int value, double sampleRate = 1)
+        public static void Timer(string statName, int value, double sampleRate = 1, IDictionary<String, String> dimensions = null)
         {
-            _statsD.Send<Statsd.Timing>(BuildNamespacedStatName(statName), value, sampleRate);
+            _statsD.Send<Statsd.Timing>(BuildNamespacedStatName(statName), value, sampleRate, dimensions);
         }
 
         /// <summary>
@@ -101,7 +102,7 @@ namespace StatsdClient
         /// <param name="name">Name of the metric.</param>
         /// <returns>A disposable object that will record & send the metric.</returns>
         /// <param name="sampleRate">Sample rate to reduce the load on your metric server. Defaults to 1 (100%).</param>
-        public static IDisposable StartTimer(string name, double sampleRate = 1)
+        public static IDisposable StartTimer(string name, double sampleRate = 1, IDictionary<String, String> dimensions = null)
         {
             return new MetricsTimer(name, sampleRate);
         }
@@ -112,9 +113,9 @@ namespace StatsdClient
         /// <param name="action">The code to time.</param>
         /// <param name="statName">Name of the metric.</param>
         /// <param name="sampleRate">Sample rate to reduce the load on your metric server. Defaults to 1 (100%).</param>
-        public static void Time(Action action, string statName, double sampleRate = 1)
+        public static void Time(Action action, string statName, double sampleRate = 1, IDictionary<String, String> dimensions = null)
         {
-            _statsD.Send(action, BuildNamespacedStatName(statName), sampleRate);
+            _statsD.Send(action, BuildNamespacedStatName(statName), sampleRate, dimensions);
         }
 
         /// <summary>
@@ -123,9 +124,9 @@ namespace StatsdClient
         /// <param name="func">The code to time.</param>
         /// <param name="statName">Name of the metric.</param>
         /// <returns>Return value of the function.</returns>
-        public static T Time<T>(Func<T> func, string statName)
+        public static T Time<T>(Func<T> func, string statName, IDictionary<String, String> dimensions = null)
         {
-            using (StartTimer(statName))
+            using (StartTimer(statName, dimensions: dimensions))
             {
                 return func();
             }
@@ -136,9 +137,9 @@ namespace StatsdClient
         /// </summary>
         /// <param name="statName">Name of the metric.</param>
         /// <param name="value">Value to set.</param>
-        public static void Set(string statName, string value)
+        public static void Set(string statName, string value, IDictionary<String, String> dimensions = null)
         {
-            _statsD.Send<Statsd.Set>(BuildNamespacedStatName(statName), value);
+            _statsD.Send<Statsd.Set>(BuildNamespacedStatName(statName), value, dimensions);
         }
 
         private static string BuildNamespacedStatName(string statName)
